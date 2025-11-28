@@ -1,0 +1,5 @@
+cmake
+numpy<2
+opencv-python
+face_recognition
+ultralytics

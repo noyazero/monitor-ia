@@ -1,0 +1,14 @@
+ultralytics
+easyocr
+opencv-python
+numpy
+# Opcionales pero recomendados para evitar errores de dependencias
+pillow
+scipy
+'''
+# 1. Desinstala la versión lenta
+pip uninstall torch torchvision torchaudio -y
+
+# 2. Instala la versión rápida (CUDA)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+'''

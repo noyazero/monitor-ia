@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Configurador IA</title>
+    <style> 
+        body { font-family: sans-serif; background: #222; color: #eee; padding: 20px; } 
+        input { width: 500px; padding: 10px; margin-bottom: 10px; display: block; } 
+        button { padding: 10px; margin-top: 15px;} 
+        label { margin-top: 10px; display: block; font-weight: bold;}
+    </style>
+</head>
+<body>
+    <h1>Configurador de Cámara IA</h1>
+    <p>Configura la URL RTSP y los umbrales de confianza (precisión) para cada clase.</p>
+    
+    <label for="rtsp-url">URL RTSP:</label>
+    <input type="text" id="rtsp-url" placeholder="rtsp://admin:admin@192.168.0.50...">
+    
+    <label for="conf-persona">Umbral Persona (ej. 0.5):</label>
+    <input type="number" id="conf-persona" min="0.1" max="1.0" step="0.05">
+
+    <label for="conf-casco">Umbral Casco (ej. 0.7):</label>
+    <input type="number" id="conf-casco" min="0.1" max="1.0" step="0.05">
+
+    <label for="conf-guantes">Umbral Guantes (ej. 0.7):</label>
+    <input type="number" id="conf-guantes" min="0.1" max="1.0" step="0.05">
+    
+    <hr style="margin: 30px 0; border-color: #444;">
+    
+    <h2>📱 Números de WhatsApp para Notificaciones</h2>
+    <p>Configura hasta 5 números para recibir alertas (formato: +56912345678)</p>
+    
+    <label for="phone-1">Número 1:</label>
+    <input type="text" id="phone-1" placeholder="+56912345678">
+    
+    <label for="phone-2">Número 2:</label>
+    <input type="text" id="phone-2" placeholder="+56987654321">
+    
+    <label for="phone-3">Número 3 (opcional):</label>
+    <input type="text" id="phone-3" placeholder="+56900000000">
+    
+    <label for="phone-4">Número 4 (opcional):</label>
+    <input type="text" id="phone-4" placeholder="+56900000000">
+    
+    <label for="phone-5">Número 5 (opcional):</label>
+    <input type="text" id="phone-5" placeholder="+56900000000">
+    
+    <button id="save-btn">Guardar Configuración Completa</button>
+    <button id="test-whatsapp-btn" style="background: #25D366; color: white;">Enviar WhatsApp de Prueba</button>
+    <div id="status" style="margin-top:20px;"></div>
+
+    <script>
+        // --- ¡OJO! ---
+        // Pega aquí la URL de tu túnel de la API (la que termina en :3001)
+        const apiUrl = 'https://lodging-sir-exhibitions-refine.trycloudflare.com/api/config';
+        // --- ---
+        
+        const urlInput = document.getElementById('rtsp-url');
+        const confPersonaInput = document.getElementById('conf-persona');
+        const confCascoInput = document.getElementById('conf-casco');
+        const confGuantesInput = document.getElementById('conf-guantes');
+        const phone1Input = document.getElementById('phone-1');
+        const phone2Input = document.getElementById('phone-2');
+        const phone3Input = document.getElementById('phone-3');
+        const phone4Input = document.getElementById('phone-4');
+        const phone5Input = document.getElementById('phone-5');
+        const saveBtn = document.getElementById('save-btn');
+        const testWhatsAppBtn = document.getElementById('test-whatsapp-btn');
+        const statusEl = document.getElementById('status');
+
+        // Cargar la config actual al abrir la página
+        document.addEventListener('DOMContentLoaded', () => {
+            statusEl.textContent = 'Cargando config actual...';
+            fetch(apiUrl).then(res => res.json()).then(data => {
+                if (data.rtsp_url) urlInput.value = data.rtsp_url;
+                if (data.conf_persona) confPersonaInput.value = data.conf_persona;
+                if (data.conf_casco) confCascoInput.value = data.conf_casco;
+                if (data.conf_guantes) confGuantesInput.value = data.conf_guantes;
+                
+                // Cargar números de WhatsApp
+                if (data.whatsapp_phones) {
+                    if (data.whatsapp_phones[0]) phone1Input.value = data.whatsapp_phones[0];
+                    if (data.whatsapp_phones[1]) phone2Input.value = data.whatsapp_phones[1];
+                    if (data.whatsapp_phones[2]) phone3Input.value = data.whatsapp_phones[2];
+                    if (data.whatsapp_phones[3]) phone4Input.value = data.whatsapp_phones[3];
+                    if (data.whatsapp_phones[4]) phone5Input.value = data.whatsapp_phones[4];
+                }
+                
+                statusEl.textContent = 'Listo.';
+            }).catch(err => statusEl.textContent = 'Error cargando config.');
+        });
+
+        // Guardar la config nueva al apretar el botón
+        saveBtn.addEventListener('click', () => {
+            // Recopilar números (solo los que no estén vacíos)
+            const phones = [
+                phone1Input.value.trim(),
+                phone2Input.value.trim(),
+                phone3Input.value.trim(),
+                phone4Input.value.trim(),
+                phone5Input.value.trim()
+            ].filter(phone => phone !== '');
+            
+            // Validar formato de números
+            const phoneRegex = /^\+\d{10,15}$/;
+            for (const phone of phones) {
+                if (!phoneRegex.test(phone)) {
+                    statusEl.textContent = `❌ Formato inválido: ${phone}. Usa formato: +56912345678`;
+                    statusEl.style.color = '#ff4444';
+                    return;
+                }
+            }
+            
+            if (phones.length === 0) {
+                statusEl.textContent = '⚠️ Debes agregar al menos un número de WhatsApp';
+                statusEl.style.color = '#ffaa00';
+                return;
+            }
+            
+            statusEl.textContent = 'Guardando...';
+            statusEl.style.color = '#eee';
+            
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    rtsp_url: urlInput.value,
+                    conf_persona: parseFloat(confPersonaInput.value),
+                    conf_casco: parseFloat(confCascoInput.value),
+                    conf_guantes: parseFloat(confGuantesInput.value),
+                    whatsapp_phones: phones
+                })
+            }).then(res => {
+                if (res.ok) {
+                    statusEl.textContent = '✅ ¡Configuración guardada exitosamente!';
+                    statusEl.style.color = '#44ff44';
+                } else {
+                    statusEl.textContent = '❌ Error al guardar.';
+                    statusEl.style.color = '#ff4444';
+                }
+            }).catch(err => {
+                statusEl.textContent = '❌ Error de conexión.';
+                statusEl.style.color = '#ff4444';
+            });
+        });
+        
+        // Botón de prueba de WhatsApp
+        testWhatsAppBtn.addEventListener('click', () => {
+            statusEl.textContent = '📱 Enviando WhatsApp de prueba...';
+            statusEl.style.color = '#eee';
+            
+            const testApiUrl = apiUrl.replace('/config', '/send-whatsapp');
+            
+            fetch(testApiUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    message: '🚨 PRUEBA - Sistema Monitor-IA\n\nEste es un mensaje de prueba desde el panel de configuración.\n\nSi recibes este mensaje, las notificaciones están funcionando correctamente.\n\n✅ Sistema: Monitor-IA',
+                    force: true
+                })
+            }).then(res => res.json()).then(data => {
+                if (data.success) {
+                    statusEl.textContent = '✅ WhatsApp de prueba enviado exitosamente! Revisa tu teléfono.';
+                    statusEl.style.color = '#44ff44';
+                } else {
+                    statusEl.textContent = `❌ Error: ${data.error}`;
+                    statusEl.style.color = '#ff4444';
+                }
+            }).catch(err => {
+                statusEl.textContent = '❌ Error enviando WhatsApp de prueba.';
+                statusEl.style.color = '#ff4444';
+            });
+        });
+    </script>
+</body>
+</html>

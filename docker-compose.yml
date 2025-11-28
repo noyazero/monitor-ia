@@ -1,0 +1,94 @@
+# Nota: Eliminamos "version: '3.8'" porque en versiones nuevas de Docker es obsoleto.
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+services:
+  # =======================================================
+  # 1. CEREBRO (API Logs & Config)
+  # =======================================================
+  core:
+    build: ./api-backend
+    container_name: sistema_core
+    restart: always
+    ports:
+      - "3001:3001"
+    # Este servicio responde internamente a: http://core:3001
+
+  # =======================================================
+  # 2. VISION (IA Modular con GPU)
+  # =======================================================
+  vision:
+    build: ./ia-worker
+    container_name: sistema_vision
+    restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              count: all
+    environment:
+      # Aquí usamos 'core' porque es el nombre del SERVICIO definido arriba
+      - API_URL=http://core:3001/api
+      - STARTUP_DELAY=10
+
+  # =======================================================
+  # 3. TÚNEL (Acceso Externo para Vercel)
+  # =======================================================
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: tunnel_logs
+    restart: unless-stopped
+    # El túnel busca al servicio 'core' en su puerto interno
+    command: tunnel --url http://core:3001
+    depends_on:
+      - core
+
+  # =======================================================
+  # 4. MONITOREO (El Pulso del Sistema)
+  # =======================================================
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: monitor_cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    privileged: true
+    restart: always
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: monitor_prometheus
+    volumes:
+      # Asegúrate de que este archivo exista en tu carpeta local:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - cadvisor
+    restart: always
+  
+  grafana:
+    image: grafana/grafana:latest
+    container_name: monitor_grafana
+    ports:
+      - "3003:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: always
