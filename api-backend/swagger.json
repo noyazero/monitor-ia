@@ -1,0 +1,122 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Monitor-IA API Core",
+    "version": "2.1.0",
+    "description": "API Central para logs y configuración de cámaras."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Servidor Actual (Local o Túnel)"
+    }
+  ],
+  "tags": [
+    { "name": "Configuración", "description": "Gestión de cámaras y ajustes" },
+    { "name": "Logs", "description": "Eventos de IA y alertas" }
+  ],
+  "paths": {
+    "/api/config": {
+      "get": {
+        "summary": "Obtener configuración actual",
+        "tags": ["Configuración"],
+        "responses": {
+          "200": {
+            "description": "Configuración obtenida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rtsp_url": { "type": "string", "example": "rtsp://admin:pass@192.168.1.50/cam" },
+                    "global_enabled": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Actualizar configuración",
+        "tags": ["Configuración"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rtsp_url": { "type": "string", "example": "rtsp://admin:1234@192.168.1.50:554/cam" },
+                  "global_enabled": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Guardado exitosamente" }
+        }
+      }
+    },
+    "/api/log": {
+      "post": {
+        "summary": "Registrar evento de IA",
+        "tags": ["Logs"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "source": { "type": "string", "example": "DETECTOR_FUEGO" },
+                  "level": { "type": "string", "example": "ALERTA" },
+                  "message": { "type": "string", "example": "Humo detectado" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Log creado" }
+        }
+      }
+    },
+    "/api/logs": {
+      "get": {
+        "summary": "Consultar historial",
+        "tags": ["Logs"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "schema": { "type": "string" },
+            "description": "Filtrar por módulo (ej: DETECTOR_FUEGO)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de eventos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "timestamp": { "type": "string" },
+                      "source": { "type": "string" },
+                      "message": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
